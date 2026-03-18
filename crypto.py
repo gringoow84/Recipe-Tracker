@@ -28,9 +28,13 @@ def _get_fernet():
             key = f.read().strip()
     else:
         key = Fernet.generate_key()
-        with open(KEY_FILE, "wb") as f:
-            f.write(key)
-        print(f"[crypto] Generated new encryption key -> {KEY_FILE}")
+        try:
+            with open(KEY_FILE, "wb") as f:
+                f.write(key)
+            print(f"[crypto] Generated new encryption key -> {KEY_FILE}")
+        except Exception as write_err:
+            print(f"[crypto] WARNING: Could not write key file ({write_err}). "
+                  f"Set RECIPE_TRACKER_ENC_KEY env var to persist encryption across restarts.")
 
     _fernet = Fernet(key)
     return _fernet

@@ -303,7 +303,8 @@ def add_recipe():
             )
             flash(f"Recipe '{title}' added successfully!", "success")
             return redirect(url_for("recipe_detail", recipe_id=recipe_id))
-        except (ValueError, KeyError) as e:
+        except Exception as e:
+            print(f"[add_recipe error] {e}")
             flash(f"Error adding recipe: {e}", "danger")
 
     return render_template("recipe_form.html", mode="add", recipe=None, categories=CATEGORIES)
@@ -349,7 +350,8 @@ def edit_recipe(recipe_id):
             )
             flash(f"Recipe '{title}' updated!", "success")
             return redirect(url_for("recipe_detail", recipe_id=recipe_id))
-        except (ValueError, KeyError) as e:
+        except Exception as e:
+            print(f"[edit_recipe error] {e}")
             flash(f"Error updating recipe: {e}", "danger")
 
     return render_template("recipe_form.html", mode="edit", recipe=recipe, categories=CATEGORIES)
