@@ -1,0 +1,41 @@
+{% extends "base.html" %}
+{% block title %}Register — Recipe Tracker{% endblock %}
+{% block content %}
+<div class="row justify-content-center mt-4">
+    <div class="col-sm-10 col-md-6 col-lg-5">
+        <div class="card card-shadow border-0">
+            <div class="card-body p-4">
+                <div class="text-center mb-4">
+                    <i class="bi bi-person-plus display-4 text-success"></i>
+                    <h4 class="mt-2 fw-bold">Create Account</h4>
+                </div>
+                <form method="POST" novalidate>
+                    <div class="mb-3">
+                        <label class="form-label">Username</label>
+                        <input type="text" class="form-control" name="username" placeholder="At least 3 characters" required autofocus>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Email Address</label>
+                        <input type="email" class="form-control" name="email" placeholder="your@email.com" required>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Password</label>
+                        <input type="password" class="form-control" name="password" placeholder="At least 8 characters" required>
+                    </div>
+                    <div class="mb-4">
+                        <label class="form-label">Confirm Password</label>
+                        <input type="password" class="form-control" name="confirm_password" placeholder="Repeat password" required>
+                    </div>
+                    <button type="submit" class="btn btn-success w-100 py-2">
+                        <i class="bi bi-person-check me-2"></i>Create Account
+                    </button>
+                </form>
+                <hr class="my-3">
+                <p class="text-center mb-0">
+                    Already have an account? <a href="{{ url_for('login') }}" class="text-decoration-none">Sign in</a>
+                </p>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

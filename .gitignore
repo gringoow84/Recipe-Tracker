@@ -1,0 +1,7 @@
+secret.key
+flask_secret.key
+recipe_tracker.db
+__pycache__/
+*.pyc
+.env
+venv/

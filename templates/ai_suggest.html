@@ -1,0 +1,142 @@
+{% extends "base.html" %}
+{% block title %}AI Recipe Suggester — Recipe Tracker{% endblock %}
+{% block content %}
+
+<div class="row justify-content-center">
+    <div class="col-lg-8">
+        <div class="text-center mb-4">
+            <i class="bi bi-robot display-4 text-success"></i>
+            <h2 class="fw-bold mt-2">AI Recipe Suggester</h2>
+            <p class="text-muted">Ask for recipe ideas, substitutions, cooking tips, calorie info — anything food related!</p>
+        </div>
+
+        {% if not has_api_key %}
+        <div class="alert alert-warning">
+            <i class="bi bi-exclamation-triangle me-2"></i>
+            <strong>GROQ_API_KEY is not set.</strong> Add it in your Render environment variables to enable AI.
+        </div>
+        {% endif %}
+
+        <!-- Quick prompts -->
+        <div class="d-flex flex-wrap gap-2 mb-3">
+            <button class="btn btn-outline-success btn-sm" onclick="setPrompt('I have chicken, garlic, and lemon. What can I make?')">
+                <i class="bi bi-lightbulb me-1"></i>Recipe by ingredients
+            </button>
+            <button class="btn btn-outline-success btn-sm" onclick="setPrompt('Suggest a healthy 30-minute dinner for 2 people.')">
+                <i class="bi bi-clock me-1"></i>Quick dinner idea
+            </button>
+            <button class="btn btn-outline-success btn-sm" onclick="setPrompt('What can I substitute for eggs in baking?')">
+                <i class="bi bi-arrow-left-right me-1"></i>Substitutions
+            </button>
+            <button class="btn btn-outline-success btn-sm" onclick="setPrompt('How many calories are in a homemade pizza slice?')">
+                <i class="bi bi-fire me-1"></i>Calorie question
+            </button>
+            <button class="btn btn-outline-success btn-sm" onclick="setPrompt('Give me a 7-day meal plan for weight loss.')">
+                <i class="bi bi-calendar me-1"></i>Meal plan
+            </button>
+        </div>
+
+        <!-- Chat box -->
+        <div class="card card-shadow border-0">
+            <div class="card-body p-0">
+                <div id="chat-messages" style="height: 420px; overflow-y: auto; padding: 1rem; background: #f8f9fa;">
+                    <div class="text-center text-muted py-5" id="chat-placeholder">
+                        <i class="bi bi-chat-dots display-4"></i>
+                        <p class="mt-2">Ask me anything about recipes and cooking!</p>
+                    </div>
+                </div>
+                <div class="border-top p-3">
+                    <div class="d-flex gap-2">
+                        <input type="text" id="chat-input" class="form-control"
+                               placeholder="Ask about recipes, ingredients, substitutions..."
+                               onkeydown="if(event.key==='Enter' && !event.shiftKey){sendMessage();event.preventDefault();}">
+                        <button class="btn btn-success px-4" onclick="sendMessage()" id="send-btn">
+                            <i class="bi bi-send"></i>
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+{% endblock %}
+
+{% block scripts %}
+<script>
+let chatHistory = [];
+
+function setPrompt(text) {
+    document.getElementById('chat-input').value = text;
+    document.getElementById('chat-input').focus();
+}
+
+function addMessage(role, content) {
+    const placeholder = document.getElementById('chat-placeholder');
+    if (placeholder) placeholder.remove();
+
+    const box = document.getElementById('chat-messages');
+    const div = document.createElement('div');
+    div.className = `d-flex mb-3 ${role === 'user' ? 'justify-content-end' : 'justify-content-start'}`;
+    div.innerHTML = `
+        <div class="p-3 rounded-3 ${role === 'user' ? 'bg-success text-white' : 'bg-white border'}"
+             style="max-width:80%; white-space: pre-wrap;" id="msg-${Date.now()}">
+            ${content}
+        </div>`;
+    box.appendChild(div);
+    box.scrollTop = box.scrollHeight;
+    return div.querySelector('div');
+}
+
+async function sendMessage() {
+    const input = document.getElementById('chat-input');
+    const question = input.value.trim();
+    if (!question) return;
+
+    input.value = '';
+    input.disabled = true;
+    document.getElementById('send-btn').disabled = true;
+
+    addMessage('user', question);
+    const bubble = addMessage('assistant', '<span class="spinner-border spinner-border-sm"></span>');
+
+    chatHistory.push({ role: 'user', content: question });
+
+    try {
+        const resp = await fetch('/ai/chat', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ question, history: chatHistory.slice(-10) })
+        });
+
+        const reader = resp.body.getReader();
+        const decoder = new TextDecoder();
+        let fullText = '';
+        bubble.textContent = '';
+
+        while (true) {
+            const { done, value } = await reader.read();
+            if (done) break;
+            const chunk = decoder.decode(value);
+            const lines = chunk.split('\n');
+            for (const line of lines) {
+                if (!line.startsWith('data: ')) continue;
+                try {
+                    const data = JSON.parse(line.slice(6));
+                    if (data.token) { fullText += data.token; bubble.textContent = fullText; }
+                    if (data.error) { bubble.textContent = '❌ ' + data.error; }
+                } catch {}
+            }
+            document.getElementById('chat-messages').scrollTop = 999999;
+        }
+        chatHistory.push({ role: 'assistant', content: fullText });
+    } catch (e) {
+        bubble.textContent = 'Error: ' + e.message;
+    }
+
+    input.disabled = false;
+    document.getElementById('send-btn').disabled = false;
+    input.focus();
+}
+</script>
+{% endblock %}

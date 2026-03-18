@@ -1,0 +1,148 @@
+{% extends "base.html" %}
+{% block title %}Meal Planner — Recipe Tracker{% endblock %}
+{% block content %}
+
+<div class="d-flex justify-content-between align-items-center mb-4 flex-wrap gap-2">
+    <h2 class="fw-bold mb-0"><i class="bi bi-calendar-week me-2 text-success"></i>Meal Planner</h2>
+    <div class="btn-group">
+        <a href="{{ url_for('meal_planner', week=week_offset-1) }}" class="btn btn-outline-secondary">
+            <i class="bi bi-chevron-left"></i> Prev
+        </a>
+        <a href="{{ url_for('meal_planner', week=0) }}" class="btn btn-outline-secondary">Today</a>
+        <a href="{{ url_for('meal_planner', week=week_offset+1) }}" class="btn btn-outline-secondary">
+            Next <i class="bi bi-chevron-right"></i>
+        </a>
+    </div>
+</div>
+
+<p class="text-muted mb-3">
+    <strong>{{ monday.strftime('%B %d') }}</strong> — <strong>{{ sunday.strftime('%B %d, %Y') }}</strong>
+</p>
+
+<!-- Add to meal plan modal trigger form -->
+<div class="modal fade" id="addMealModal" tabindex="-1">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-header bg-success text-white">
+                <h5 class="modal-title"><i class="bi bi-calendar-plus me-2"></i>Add to Meal Plan</h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <form method="POST" action="{{ url_for('add_to_meal_plan') }}">
+                <div class="modal-body">
+                    <input type="hidden" name="week_offset" value="{{ week_offset }}">
+                    <input type="hidden" name="plan_date" id="modal-date">
+                    <input type="hidden" name="meal_type" id="modal-meal">
+                    <p class="text-muted" id="modal-label"></p>
+                    <div class="mb-3">
+                        <label class="form-label">Choose Recipe</label>
+                        <select class="form-select" name="recipe_id" required>
+                            <option value="">— Select a recipe —</option>
+                            {% for r in all_recipes %}
+                            <option value="{{ r.id }}">{{ r.title }} ({{ r.category }})</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                    <button type="submit" class="btn btn-success">Add to Plan</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- Week table -->
+<div class="table-responsive">
+    <table class="table table-bordered align-middle" style="min-width: 800px;">
+        <thead class="table-success">
+            <tr>
+                <th style="width:90px">Meal</th>
+                {% for d in week_dates %}
+                <th class="text-center {% if d.isoformat() == today_str %}table-warning{% endif %}">
+                    <div class="small text-muted">{{ d.strftime('%a') }}</div>
+                    <div class="fw-bold">{{ d.strftime('%b %d') }}</div>
+                </th>
+                {% endfor %}
+            </tr>
+        </thead>
+        <tbody>
+            {% for meal in meal_types %}
+            <tr>
+                <td class="fw-semibold text-muted small">
+                    {% if meal == 'Breakfast' %}<i class="bi bi-cup-hot me-1"></i>
+                    {% elif meal == 'Lunch' %}<i class="bi bi-sun me-1"></i>
+                    {% else %}<i class="bi bi-moon-stars me-1"></i>{% endif %}
+                    {{ meal }}
+                </td>
+                {% for d in week_dates %}
+                <td class="p-1">
+                    <div class="meal-cell">
+                        {% set day_str = d.isoformat() %}
+                        {% if plan_map.get(day_str, {}).get(meal) %}
+                            {% for entry in plan_map[day_str][meal] %}
+                            <div class="d-flex justify-content-between align-items-start mb-1">
+                                <a href="{{ url_for('recipe_detail', recipe_id=entry.recipe_id) }}"
+                                   class="small text-success fw-semibold text-decoration-none">
+                                    {{ entry.recipe_title }}
+                                </a>
+                                <form method="POST" action="{{ url_for('remove_from_meal_plan', plan_id=entry.id) }}">
+                                    <input type="hidden" name="week_offset" value="{{ week_offset }}">
+                                    <button class="btn btn-link btn-sm p-0 text-danger ms-1" title="Remove">
+                                        <i class="bi bi-x"></i>
+                                    </button>
+                                </form>
+                            </div>
+                            {% endfor %}
+                        {% endif %}
+                        <button class="btn btn-link btn-sm p-0 text-muted"
+                                onclick="openAddMeal('{{ d.isoformat() }}', '{{ meal }}')">
+                            <i class="bi bi-plus-circle"></i>
+                        </button>
+                    </div>
+                </td>
+                {% endfor %}
+            </tr>
+            {% endfor %}
+            <!-- Calorie totals row -->
+            <tr class="table-light">
+                <td class="small text-muted fw-semibold"><i class="bi bi-fire me-1"></i>Cal Total</td>
+                {% for d in week_dates %}
+                <td class="text-center small {% if day_calories.get(d.isoformat(), 0) > 2000 %}text-danger fw-bold{% else %}text-muted{% endif %}">
+                    {{ day_calories.get(d.isoformat(), 0) }}
+                </td>
+                {% endfor %}
+            </tr>
+        </tbody>
+    </table>
+</div>
+
+<!-- Generate shopping list from this week -->
+<div class="card card-shadow border-0 mt-3">
+    <div class="card-body">
+        <form method="POST" action="{{ url_for('generate_shopping_list') }}" class="d-flex align-items-center gap-3 flex-wrap">
+            <span class="fw-semibold"><i class="bi bi-cart me-1"></i>Generate shopping list for:</span>
+            <input type="date" class="form-control form-control-sm" name="date_from" value="{{ monday.isoformat() }}" style="width:160px">
+            <span class="text-muted">to</span>
+            <input type="date" class="form-control form-control-sm" name="date_to" value="{{ sunday.isoformat() }}" style="width:160px">
+            <button type="submit" class="btn btn-success btn-sm">
+                <i class="bi bi-cart-plus me-1"></i>Generate
+            </button>
+        </form>
+    </div>
+</div>
+
+{% endblock %}
+
+{% block scripts %}
+<script>
+const todayStr = new Date().toISOString().split('T')[0];
+
+function openAddMeal(date, meal) {
+    document.getElementById('modal-date').value = date;
+    document.getElementById('modal-meal').value = meal;
+    document.getElementById('modal-label').textContent = `Adding ${meal} for ${date}`;
+    new bootstrap.Modal(document.getElementById('addMealModal')).show();
+}
+</script>
+{% endblock %}

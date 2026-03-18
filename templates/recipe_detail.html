@@ -1,0 +1,264 @@
+{% extends "base.html" %}
+{% block title %}{{ recipe.title }} — Recipe Tracker{% endblock %}
+{% block content %}
+
+<nav aria-label="breadcrumb" class="mb-3">
+    <ol class="breadcrumb">
+        <li class="breadcrumb-item"><a href="{{ url_for('dashboard') }}">Recipes</a></li>
+        <li class="breadcrumb-item active">{{ recipe.title }}</li>
+    </ol>
+</nav>
+
+<div class="row">
+    <div class="col-lg-8">
+        <!-- Header -->
+        <div class="card card-shadow border-0 mb-3">
+            <div class="card-body">
+                <div class="d-flex justify-content-between align-items-start flex-wrap gap-2">
+                    <div>
+                        <span class="badge bg-{{ category_colors.get(recipe.category, 'secondary') }} mb-2">
+                            <i class="bi {{ category_icons.get(recipe.category, 'bi-grid') }} me-1"></i>{{ recipe.category }}
+                        </span>
+                        <h2 class="fw-bold mb-1">{{ recipe.title }}</h2>
+                        {% if recipe.description %}<p class="text-muted">{{ recipe.description }}</p>{% endif %}
+                    </div>
+                    <div class="btn-group">
+                        <a href="{{ url_for('edit_recipe', recipe_id=recipe.id) }}" class="btn btn-outline-primary btn-sm">
+                            <i class="bi bi-pencil me-1"></i>Edit
+                        </a>
+                        <button class="btn btn-outline-danger btn-sm" onclick="confirmDelete()">
+                            <i class="bi bi-trash me-1"></i>Delete
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Stats -->
+                <div class="row g-2 mt-2">
+                    {% if recipe.prep_time %}
+                    <div class="col-6 col-sm-3">
+                        <div class="text-center p-2 bg-light rounded">
+                            <div class="small text-muted">Prep Time</div>
+                            <div class="fw-bold">{{ recipe.prep_time }} min</div>
+                        </div>
+                    </div>
+                    {% endif %}
+                    {% if recipe.cook_time %}
+                    <div class="col-6 col-sm-3">
+                        <div class="text-center p-2 bg-light rounded">
+                            <div class="small text-muted">Cook Time</div>
+                            <div class="fw-bold">{{ recipe.cook_time }} min</div>
+                        </div>
+                    </div>
+                    {% endif %}
+                    {% if recipe.calories_per_serving %}
+                    <div class="col-6 col-sm-3">
+                        <div class="text-center p-2 bg-light rounded">
+                            <div class="small text-muted">Calories</div>
+                            <div class="fw-bold text-danger">{{ recipe.calories_per_serving }}/serving</div>
+                        </div>
+                    </div>
+                    {% endif %}
+                    <div class="col-6 col-sm-3">
+                        <div class="text-center p-2 bg-light rounded">
+                            <div class="small text-muted">Total Calories</div>
+                            <div class="fw-bold text-danger">{{ recipe.calories_per_serving * servings }}</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Ingredients with serving adjuster -->
+        <div class="card card-shadow border-0 mb-3">
+            <div class="card-header bg-success text-white d-flex justify-content-between align-items-center">
+                <span><i class="bi bi-list-check me-2"></i>Ingredients</span>
+                <div class="d-flex align-items-center gap-2">
+                    <small>Servings:</small>
+                    <a href="{{ url_for('recipe_detail', recipe_id=recipe.id, servings=[servings-1, 1]|max) }}"
+                       class="btn btn-sm btn-light py-0 px-2">-</a>
+                    <span class="fw-bold" id="serving-count">{{ servings }}</span>
+                    <a href="{{ url_for('recipe_detail', recipe_id=recipe.id, servings=servings+1) }}"
+                       class="btn btn-sm btn-light py-0 px-2">+</a>
+                </div>
+            </div>
+            <div class="card-body">
+                <ul class="list-group list-group-flush">
+                    {% for ing in scaled_ingredients %}
+                    <li class="list-group-item px-0">
+                        <i class="bi bi-dot text-success me-1"></i>
+                        <strong>{{ ing.amount }} {{ ing.unit }}</strong> {{ ing.name }}
+                    </li>
+                    {% endfor %}
+                </ul>
+            </div>
+        </div>
+
+        <!-- Instructions -->
+        <div class="card card-shadow border-0 mb-3">
+            <div class="card-header bg-success text-white">
+                <i class="bi bi-list-ol me-2"></i>Instructions
+            </div>
+            <div class="card-body">
+                <ol class="mb-0">
+                    {% for step in recipe.instructions %}
+                    <li class="mb-3">{{ step }}</li>
+                    {% endfor %}
+                </ol>
+            </div>
+        </div>
+
+        {% if recipe.notes %}
+        <div class="card card-shadow border-0 mb-3">
+            <div class="card-header bg-warning text-dark">
+                <i class="bi bi-lightbulb me-2"></i>Notes & Tips
+            </div>
+            <div class="card-body">{{ recipe.notes }}</div>
+        </div>
+        {% endif %}
+    </div>
+
+    <!-- Sidebar -->
+    <div class="col-lg-4">
+        <!-- Add to Meal Plan -->
+        <div class="card card-shadow border-0 mb-3">
+            <div class="card-header bg-dark text-white"><i class="bi bi-calendar-plus me-2"></i>Add to Meal Plan</div>
+            <div class="card-body">
+                <form method="POST" action="{{ url_for('add_to_meal_plan') }}">
+                    <input type="hidden" name="recipe_id" value="{{ recipe.id }}">
+                    <div class="mb-2">
+                        <label class="form-label small">Date</label>
+                        <input type="date" class="form-control form-control-sm" name="plan_date"
+                               value="{{ now.strftime('%Y-%m-%d') if now else '' }}" required>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label small">Meal</label>
+                        <select class="form-select form-select-sm" name="meal_type">
+                            <option>Breakfast</option>
+                            <option>Lunch</option>
+                            <option selected>Dinner</option>
+                        </select>
+                    </div>
+                    <button class="btn btn-dark w-100 btn-sm">
+                        <i class="bi bi-calendar-check me-1"></i>Add to Plan
+                    </button>
+                </form>
+            </div>
+        </div>
+
+        <!-- Add ingredients to shopping list -->
+        <div class="card card-shadow border-0 mb-3">
+            <div class="card-header bg-info text-white"><i class="bi bi-cart-plus me-2"></i>Add to Shopping List</div>
+            <div class="card-body">
+                <p class="small text-muted">Add all ingredients from this recipe to your shopping list.</p>
+                <form method="POST" action="{{ url_for('add_to_shopping_from_recipe') }}">
+                    <input type="hidden" name="recipe_id" value="{{ recipe.id }}">
+                    <button class="btn btn-info w-100 btn-sm text-white">
+                        <i class="bi bi-cart-plus me-1"></i>Add Ingredients
+                    </button>
+                </form>
+            </div>
+        </div>
+
+        <!-- Unit Converter -->
+        <div class="card card-shadow border-0">
+            <div class="card-header bg-secondary text-white"><i class="bi bi-arrow-left-right me-2"></i>Unit Converter</div>
+            <div class="card-body">
+                <div class="mb-2">
+                    <input type="number" class="form-control form-control-sm mb-1" id="conv-amount" placeholder="Amount" step="0.01">
+                    <select class="form-select form-select-sm mb-1" id="conv-from">
+                        <option value="tsp">tsp</option>
+                        <option value="tbsp">tbsp</option>
+                        <option value="cup">cup</option>
+                        <option value="fl oz">fl oz</option>
+                        <option value="ml">ml</option>
+                        <option value="liter">liter</option>
+                        <option value="oz">oz</option>
+                        <option value="lb">lb</option>
+                        <option value="g">g</option>
+                        <option value="kg">kg</option>
+                    </select>
+                    <select class="form-select form-select-sm mb-2" id="conv-to">
+                        <option value="ml">ml</option>
+                        <option value="tsp">tsp</option>
+                        <option value="tbsp">tbsp</option>
+                        <option value="cup">cup</option>
+                        <option value="liter">liter</option>
+                        <option value="oz">oz</option>
+                        <option value="g">g</option>
+                        <option value="lb">lb</option>
+                        <option value="kg">kg</option>
+                    </select>
+                    <button class="btn btn-secondary w-100 btn-sm" onclick="convertUnit()">Convert</button>
+                </div>
+                <div id="conv-result" class="alert alert-success py-1 small text-center d-none"></div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Delete modal -->
+<div class="modal fade" id="deleteModal" tabindex="-1">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Delete Recipe</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">Are you sure you want to delete <strong>{{ recipe.title }}</strong>? This cannot be undone.</div>
+            <div class="modal-footer">
+                <button class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                <form method="POST" action="{{ url_for('delete_recipe', recipe_id=recipe.id) }}">
+                    <button class="btn btn-danger"><i class="bi bi-trash me-1"></i>Delete</button>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+{% endblock %}
+
+{% block scripts %}
+<script>
+function confirmDelete() {
+    new bootstrap.Modal(document.getElementById('deleteModal')).show();
+}
+
+const CONVERSIONS = {
+    tsp:   {ml: 4.929, tbsp: 0.333, cup: 0.0208},
+    tbsp:  {ml: 14.787, tsp: 3, cup: 0.0625},
+    cup:   {ml: 236.588, tbsp: 16, tsp: 48},
+    "fl oz": {ml: 29.574, cup: 0.125},
+    liter: {ml: 1000, cup: 4.227},
+    ml:    {tsp: 0.203, tbsp: 0.068, cup: 0.00423},
+    oz:    {g: 28.3495, lb: 0.0625},
+    lb:    {g: 453.592, oz: 16},
+    g:     {oz: 0.03527, kg: 0.001},
+    kg:    {g: 1000, lb: 2.20462},
+};
+
+function convertUnit() {
+    const amount = parseFloat(document.getElementById('conv-amount').value);
+    const from = document.getElementById('conv-from').value;
+    const to = document.getElementById('conv-to').value;
+    const result = document.getElementById('conv-result');
+    if (isNaN(amount)) { result.textContent = 'Enter a valid amount.'; result.classList.remove('d-none'); return; }
+    if (from === to) { result.textContent = `${amount} ${from} = ${amount} ${to}`; result.classList.remove('d-none'); return; }
+    if (CONVERSIONS[from] && CONVERSIONS[from][to] !== undefined) {
+        const converted = (amount * CONVERSIONS[from][to]).toFixed(3).replace(/\.?0+$/, '');
+        result.textContent = `${amount} ${from} = ${converted} ${to}`;
+        result.classList.remove('d-none');
+    } else {
+        result.textContent = 'Cannot convert between these units.';
+        result.classList.remove('d-none');
+    }
+}
+
+// Set today's date in the meal plan form
+document.addEventListener('DOMContentLoaded', function() {
+    const dateInput = document.querySelector('input[name="plan_date"]');
+    if (dateInput && !dateInput.value) {
+        dateInput.value = new Date().toISOString().split('T')[0];
+    }
+});
+</script>
+{% endblock %}

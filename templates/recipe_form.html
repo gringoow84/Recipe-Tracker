@@ -1,0 +1,327 @@
+{% extends "base.html" %}
+{% block title %}{{ 'Edit' if mode == 'edit' else 'Add' }} Recipe — Recipe Tracker{% endblock %}
+{% block content %}
+
+<div class="d-flex justify-content-between align-items-center mb-3">
+    <h3 class="fw-bold mb-0">
+        <i class="bi bi-{{ 'pencil' if mode == 'edit' else 'plus-circle' }} me-2 text-success"></i>
+        {{ 'Edit Recipe' if mode == 'edit' else 'Add New Recipe' }}
+    </h3>
+    <a href="{{ url_for('dashboard') }}" class="btn btn-outline-secondary btn-sm">Cancel</a>
+</div>
+
+<!-- AI Import Section (only on add) -->
+{% if mode == 'add' %}
+<div class="card card-shadow border-0 mb-4">
+    <div class="card-header bg-success text-white">
+        <i class="bi bi-magic me-2"></i>Import Recipe with AI
+    </div>
+    <div class="card-body">
+        <ul class="nav nav-tabs mb-3" id="importTabs">
+            <li class="nav-item">
+                <button class="nav-link active" data-bs-toggle="tab" data-bs-target="#tab-text">
+                    <i class="bi bi-text-paragraph me-1"></i>Paste Text / URL
+                </button>
+            </li>
+            <li class="nav-item">
+                <button class="nav-link" data-bs-toggle="tab" data-bs-target="#tab-image">
+                    <i class="bi bi-camera me-1"></i>Upload Photo / Screenshot
+                </button>
+            </li>
+        </ul>
+        <div class="tab-content">
+            <div class="tab-pane fade show active" id="tab-text">
+                <textarea class="form-control mb-2" id="import-text" rows="4"
+                          placeholder="Paste recipe text here, or paste a URL to a recipe webpage..."></textarea>
+                <button class="btn btn-success" onclick="importFromText()" id="btn-import-text">
+                    <i class="bi bi-magic me-1"></i>Parse Recipe
+                </button>
+            </div>
+            <div class="tab-pane fade" id="tab-image">
+                <input type="file" class="form-control mb-2" id="import-image" accept="image/*">
+                <small class="text-muted d-block mb-2">Upload a photo or screenshot of a recipe. AI will extract the details.</small>
+                <button class="btn btn-success" onclick="importFromImage()" id="btn-import-image">
+                    <i class="bi bi-camera me-1"></i>Extract Recipe
+                </button>
+            </div>
+        </div>
+        <div id="import-status" class="mt-2 d-none">
+            <div class="spinner-border spinner-border-sm text-success me-2"></div>
+            <span class="text-muted">Analyzing with AI...</span>
+        </div>
+        <div id="import-error" class="alert alert-danger mt-2 d-none"></div>
+    </div>
+</div>
+{% endif %}
+
+<!-- Recipe Form -->
+<form method="POST" id="recipe-form">
+    <div class="row g-3">
+        <!-- Left column -->
+        <div class="col-lg-8">
+            <div class="card card-shadow border-0 mb-3">
+                <div class="card-body">
+                    <div class="mb-3">
+                        <label class="form-label fw-semibold">Recipe Title *</label>
+                        <input type="text" class="form-control" name="title" id="f-title"
+                               value="{{ recipe.title if recipe else '' }}" placeholder="e.g. Spaghetti Carbonara" required>
+                    </div>
+                    <div class="row g-3">
+                        <div class="col-sm-6">
+                            <label class="form-label fw-semibold">Category *</label>
+                            <select class="form-select" name="category" id="f-category">
+                                {% for cat in categories %}
+                                <option value="{{ cat }}" {% if recipe and recipe.category == cat %}selected{% endif %}>{{ cat }}</option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                        <div class="col-sm-6">
+                            <label class="form-label fw-semibold">Description</label>
+                            <input type="text" class="form-control" name="description" id="f-description"
+                                   value="{{ recipe.description if recipe else '' }}" placeholder="Brief description">
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Ingredients -->
+            <div class="card card-shadow border-0 mb-3">
+                <div class="card-header bg-success text-white d-flex justify-content-between">
+                    <span><i class="bi bi-list-check me-2"></i>Ingredients</span>
+                    <button type="button" class="btn btn-sm btn-light" onclick="addIngredient()">
+                        <i class="bi bi-plus"></i> Add
+                    </button>
+                </div>
+                <div class="card-body">
+                    <div class="row g-1 mb-1 text-muted small">
+                        <div class="col-3">Amount</div>
+                        <div class="col-3">Unit</div>
+                        <div class="col-5">Ingredient</div>
+                        <div class="col-1"></div>
+                    </div>
+                    <div id="ingredients-list">
+                        {% if recipe and recipe.ingredients %}
+                            {% for ing in recipe.ingredients %}
+                            <div class="row g-1 mb-1 ingredient-row">
+                                <div class="col-3"><input type="text" class="form-control form-control-sm" name="ing_amount[]" value="{{ ing.amount }}" placeholder="2"></div>
+                                <div class="col-3"><input type="text" class="form-control form-control-sm" name="ing_unit[]" value="{{ ing.unit }}" placeholder="cups"></div>
+                                <div class="col-5"><input type="text" class="form-control form-control-sm" name="ing_name[]" value="{{ ing.name }}" placeholder="flour" required></div>
+                                <div class="col-1"><button type="button" class="btn btn-outline-danger btn-sm" onclick="removeRow(this)"><i class="bi bi-x"></i></button></div>
+                            </div>
+                            {% endfor %}
+                        {% else %}
+                            <div class="row g-1 mb-1 ingredient-row">
+                                <div class="col-3"><input type="text" class="form-control form-control-sm" name="ing_amount[]" placeholder="2"></div>
+                                <div class="col-3"><input type="text" class="form-control form-control-sm" name="ing_unit[]" placeholder="cups"></div>
+                                <div class="col-5"><input type="text" class="form-control form-control-sm" name="ing_name[]" placeholder="flour" required></div>
+                                <div class="col-1"><button type="button" class="btn btn-outline-danger btn-sm" onclick="removeRow(this)"><i class="bi bi-x"></i></button></div>
+                            </div>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+
+            <!-- Instructions -->
+            <div class="card card-shadow border-0 mb-3">
+                <div class="card-header bg-success text-white d-flex justify-content-between">
+                    <span><i class="bi bi-list-ol me-2"></i>Instructions</span>
+                    <button type="button" class="btn btn-sm btn-light" onclick="addStep()">
+                        <i class="bi bi-plus"></i> Add Step
+                    </button>
+                </div>
+                <div class="card-body">
+                    <div id="steps-list">
+                        {% if recipe and recipe.instructions %}
+                            {% for step in recipe.instructions %}
+                            <div class="d-flex gap-2 mb-2 step-row">
+                                <span class="badge bg-success mt-2 step-num">{{ loop.index }}</span>
+                                <textarea class="form-control" name="step[]" rows="2" required>{{ step }}</textarea>
+                                <button type="button" class="btn btn-outline-danger btn-sm mt-1" onclick="removeRow(this)"><i class="bi bi-x"></i></button>
+                            </div>
+                            {% endfor %}
+                        {% else %}
+                            <div class="d-flex gap-2 mb-2 step-row">
+                                <span class="badge bg-success mt-2 step-num">1</span>
+                                <textarea class="form-control" name="step[]" rows="2" placeholder="Describe this step..." required></textarea>
+                                <button type="button" class="btn btn-outline-danger btn-sm mt-1" onclick="removeRow(this)"><i class="bi bi-x"></i></button>
+                            </div>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Right column -->
+        <div class="col-lg-4">
+            <div class="card card-shadow border-0 mb-3">
+                <div class="card-header bg-dark text-white"><i class="bi bi-clock me-2"></i>Details</div>
+                <div class="card-body">
+                    <div class="mb-3">
+                        <label class="form-label small">Prep Time (minutes)</label>
+                        <input type="number" min="0" class="form-control" name="prep_time" id="f-prep-time"
+                               value="{{ recipe.prep_time if recipe else 0 }}">
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label small">Cook Time (minutes)</label>
+                        <input type="number" min="0" class="form-control" name="cook_time" id="f-cook-time"
+                               value="{{ recipe.cook_time if recipe else 0 }}">
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label small">Servings</label>
+                        <input type="number" min="1" class="form-control" name="servings" id="f-servings"
+                               value="{{ recipe.servings if recipe else 4 }}">
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label small">Calories per Serving</label>
+                        <input type="number" min="0" class="form-control" name="calories_per_serving" id="f-calories"
+                               value="{{ recipe.calories_per_serving if recipe else 0 }}">
+                    </div>
+                </div>
+            </div>
+
+            <div class="card card-shadow border-0 mb-3">
+                <div class="card-header bg-warning text-dark"><i class="bi bi-lightbulb me-2"></i>Notes</div>
+                <div class="card-body">
+                    <textarea class="form-control" name="notes" id="f-notes" rows="4"
+                              placeholder="Tips, variations, storage info...">{{ recipe.notes if recipe else '' }}</textarea>
+                </div>
+            </div>
+
+            <button type="submit" class="btn btn-success w-100 py-2">
+                <i class="bi bi-save me-2"></i>{{ 'Save Changes' if mode == 'edit' else 'Save Recipe' }}
+            </button>
+        </div>
+    </div>
+</form>
+{% endblock %}
+
+{% block scripts %}
+<script>
+function addIngredient() {
+    const list = document.getElementById('ingredients-list');
+    const row = document.createElement('div');
+    row.className = 'row g-1 mb-1 ingredient-row';
+    row.innerHTML = `
+        <div class="col-3"><input type="text" class="form-control form-control-sm" name="ing_amount[]" placeholder="2"></div>
+        <div class="col-3"><input type="text" class="form-control form-control-sm" name="ing_unit[]" placeholder="cups"></div>
+        <div class="col-5"><input type="text" class="form-control form-control-sm" name="ing_name[]" placeholder="ingredient" required></div>
+        <div class="col-1"><button type="button" class="btn btn-outline-danger btn-sm" onclick="removeRow(this)"><i class="bi bi-x"></i></button></div>`;
+    list.appendChild(row);
+}
+
+function addStep() {
+    const list = document.getElementById('steps-list');
+    const num = list.querySelectorAll('.step-row').length + 1;
+    const row = document.createElement('div');
+    row.className = 'd-flex gap-2 mb-2 step-row';
+    row.innerHTML = `
+        <span class="badge bg-success mt-2 step-num">${num}</span>
+        <textarea class="form-control" name="step[]" rows="2" placeholder="Describe this step..." required></textarea>
+        <button type="button" class="btn btn-outline-danger btn-sm mt-1" onclick="removeRow(this)"><i class="bi bi-x"></i></button>`;
+    list.appendChild(row);
+}
+
+function removeRow(btn) {
+    btn.closest('.ingredient-row, .step-row').remove();
+    // Renumber steps
+    document.querySelectorAll('.step-num').forEach((el, i) => el.textContent = i + 1);
+}
+
+function fillForm(data) {
+    if (data.title) document.getElementById('f-title').value = data.title;
+    if (data.description) document.getElementById('f-description').value = data.description;
+    if (data.prep_time) document.getElementById('f-prep-time').value = data.prep_time;
+    if (data.cook_time) document.getElementById('f-cook-time').value = data.cook_time;
+    if (data.servings) document.getElementById('f-servings').value = data.servings;
+    if (data.calories_per_serving) document.getElementById('f-calories').value = data.calories_per_serving;
+    if (data.notes) document.getElementById('f-notes').value = data.notes;
+
+    // Set category
+    if (data.category) {
+        const sel = document.getElementById('f-category');
+        for (let opt of sel.options) {
+            if (opt.value === data.category) { sel.value = data.category; break; }
+        }
+    }
+
+    // Fill ingredients
+    if (data.ingredients && data.ingredients.length) {
+        const list = document.getElementById('ingredients-list');
+        list.innerHTML = '';
+        data.ingredients.forEach(ing => {
+            const row = document.createElement('div');
+            row.className = 'row g-1 mb-1 ingredient-row';
+            row.innerHTML = `
+                <div class="col-3"><input type="text" class="form-control form-control-sm" name="ing_amount[]" value="${ing.amount || ''}"></div>
+                <div class="col-3"><input type="text" class="form-control form-control-sm" name="ing_unit[]" value="${ing.unit || ''}"></div>
+                <div class="col-5"><input type="text" class="form-control form-control-sm" name="ing_name[]" value="${ing.name || ''}" required></div>
+                <div class="col-1"><button type="button" class="btn btn-outline-danger btn-sm" onclick="removeRow(this)"><i class="bi bi-x"></i></button></div>`;
+            list.appendChild(row);
+        });
+    }
+
+    // Fill instructions
+    if (data.instructions && data.instructions.length) {
+        const list = document.getElementById('steps-list');
+        list.innerHTML = '';
+        data.instructions.forEach((step, i) => {
+            const row = document.createElement('div');
+            row.className = 'd-flex gap-2 mb-2 step-row';
+            row.innerHTML = `
+                <span class="badge bg-success mt-2 step-num">${i+1}</span>
+                <textarea class="form-control" name="step[]" rows="2" required>${step}</textarea>
+                <button type="button" class="btn btn-outline-danger btn-sm mt-1" onclick="removeRow(this)"><i class="bi bi-x"></i></button>`;
+            list.appendChild(row);
+        });
+    }
+}
+
+async function importFromText() {
+    const text = document.getElementById('import-text').value.trim();
+    if (!text) { alert('Please paste some text or a URL first.'); return; }
+    showImportStatus(true);
+    const formData = new FormData();
+    formData.append('import_type', 'text');
+    formData.append('text', text);
+    await doImport(formData);
+}
+
+async function importFromImage() {
+    const file = document.getElementById('import-image').files[0];
+    if (!file) { alert('Please select an image first.'); return; }
+    showImportStatus(true);
+    const formData = new FormData();
+    formData.append('import_type', 'image');
+    formData.append('image', file);
+    await doImport(formData);
+}
+
+async function doImport(formData) {
+    try {
+        const resp = await fetch('/ai/import', { method: 'POST', body: formData });
+        const data = await resp.json();
+        if (data.error) {
+            showImportError(data.error);
+        } else {
+            fillForm(data);
+            showImportStatus(false);
+            document.querySelector('#recipe-form').scrollIntoView({ behavior: 'smooth' });
+        }
+    } catch (e) {
+        showImportError('Failed to parse recipe. Please try again.');
+    }
+}
+
+function showImportStatus(show) {
+    document.getElementById('import-status').classList.toggle('d-none', !show);
+    document.getElementById('import-error').classList.add('d-none');
+}
+
+function showImportError(msg) {
+    document.getElementById('import-status').classList.add('d-none');
+    const err = document.getElementById('import-error');
+    err.textContent = msg;
+    err.classList.remove('d-none');
+}
+</script>
+{% endblock %}
