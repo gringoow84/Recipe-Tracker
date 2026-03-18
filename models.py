@@ -1,6 +1,7 @@
 """
 Database models for Recipe Tracker.
 Uses PostgreSQL when DATABASE_URL env var is set, otherwise SQLite.
+All tables are prefixed with rt_ to avoid conflicts with shared databases.
 """
 
 import os
@@ -46,7 +47,7 @@ def init_db():
 
     if DATABASE_URL:
         c.execute("""
-            CREATE TABLE IF NOT EXISTS users (
+            CREATE TABLE IF NOT EXISTS rt_users (
                 id SERIAL PRIMARY KEY,
                 username TEXT UNIQUE NOT NULL,
                 email TEXT UNIQUE NOT NULL,
@@ -55,7 +56,7 @@ def init_db():
             )
         """)
         c.execute("""
-            CREATE TABLE IF NOT EXISTS password_resets (
+            CREATE TABLE IF NOT EXISTS rt_password_resets (
                 id SERIAL PRIMARY KEY,
                 user_id INTEGER NOT NULL,
                 token TEXT UNIQUE NOT NULL,
@@ -63,7 +64,7 @@ def init_db():
             )
         """)
         c.execute("""
-            CREATE TABLE IF NOT EXISTS recipes (
+            CREATE TABLE IF NOT EXISTS rt_recipes (
                 id SERIAL PRIMARY KEY,
                 user_id INTEGER NOT NULL,
                 title TEXT NOT NULL,
@@ -80,7 +81,7 @@ def init_db():
             )
         """)
         c.execute("""
-            CREATE TABLE IF NOT EXISTS meal_plans (
+            CREATE TABLE IF NOT EXISTS rt_meal_plans (
                 id SERIAL PRIMARY KEY,
                 user_id INTEGER NOT NULL,
                 plan_date TEXT NOT NULL,
@@ -89,7 +90,7 @@ def init_db():
             )
         """)
         c.execute("""
-            CREATE TABLE IF NOT EXISTS shopping_items (
+            CREATE TABLE IF NOT EXISTS rt_shopping_items (
                 id SERIAL PRIMARY KEY,
                 user_id INTEGER NOT NULL,
                 ingredient TEXT NOT NULL,
@@ -101,7 +102,7 @@ def init_db():
         """)
     else:
         c.execute("""
-            CREATE TABLE IF NOT EXISTS users (
+            CREATE TABLE IF NOT EXISTS rt_users (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
                 username TEXT UNIQUE NOT NULL,
                 email TEXT UNIQUE NOT NULL,
@@ -110,7 +111,7 @@ def init_db():
             )
         """)
         c.execute("""
-            CREATE TABLE IF NOT EXISTS password_resets (
+            CREATE TABLE IF NOT EXISTS rt_password_resets (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
                 user_id INTEGER NOT NULL,
                 token TEXT UNIQUE NOT NULL,
@@ -118,7 +119,7 @@ def init_db():
             )
         """)
         c.execute("""
-            CREATE TABLE IF NOT EXISTS recipes (
+            CREATE TABLE IF NOT EXISTS rt_recipes (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
                 user_id INTEGER NOT NULL,
                 title TEXT NOT NULL,
@@ -135,7 +136,7 @@ def init_db():
             )
         """)
         c.execute("""
-            CREATE TABLE IF NOT EXISTS meal_plans (
+            CREATE TABLE IF NOT EXISTS rt_meal_plans (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
                 user_id INTEGER NOT NULL,
                 plan_date TEXT NOT NULL,
@@ -144,7 +145,7 @@ def init_db():
             )
         """)
         c.execute("""
-            CREATE TABLE IF NOT EXISTS shopping_items (
+            CREATE TABLE IF NOT EXISTS rt_shopping_items (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
                 user_id INTEGER NOT NULL,
                 ingredient TEXT NOT NULL,
@@ -166,7 +167,7 @@ def create_user(username, email, password_hash):
     c = _cursor(conn)
     p = _p()
     c.execute(
-        f"INSERT INTO users (username,email,password_hash,created_at) VALUES ({p},{p},{p},{p})",
+        f"INSERT INTO rt_users (username,email,password_hash,created_at) VALUES ({p},{p},{p},{p})",
         (username, email, password_hash, datetime.utcnow().isoformat())
     )
     user_id = _lastrowid(conn, c)
@@ -179,7 +180,7 @@ def get_user_by_username(username):
     conn = _get_conn()
     c = _cursor(conn)
     p = _p()
-    c.execute(f"SELECT * FROM users WHERE username = {p}", (username,))
+    c.execute(f"SELECT * FROM rt_users WHERE username = {p}", (username,))
     row = c.fetchone()
     conn.close()
     return dict(row) if row else None
@@ -189,7 +190,7 @@ def get_user_by_email(email):
     conn = _get_conn()
     c = _cursor(conn)
     p = _p()
-    c.execute(f"SELECT * FROM users WHERE email = {p}", (email,))
+    c.execute(f"SELECT * FROM rt_users WHERE email = {p}", (email,))
     row = c.fetchone()
     conn.close()
     return dict(row) if row else None
@@ -199,7 +200,7 @@ def get_user_by_id(user_id):
     conn = _get_conn()
     c = _cursor(conn)
     p = _p()
-    c.execute(f"SELECT * FROM users WHERE id = {p}", (user_id,))
+    c.execute(f"SELECT * FROM rt_users WHERE id = {p}", (user_id,))
     row = c.fetchone()
     conn.close()
     return dict(row) if row else None
@@ -209,7 +210,7 @@ def update_user_password(user_id, new_hash):
     conn = _get_conn()
     c = _cursor(conn)
     p = _p()
-    c.execute(f"UPDATE users SET password_hash = {p} WHERE id = {p}", (new_hash, user_id))
+    c.execute(f"UPDATE rt_users SET password_hash = {p} WHERE id = {p}", (new_hash, user_id))
     conn.commit()
     conn.close()
 
@@ -220,9 +221,9 @@ def create_reset_token(user_id, token, expires_at):
     conn = _get_conn()
     c = _cursor(conn)
     p = _p()
-    c.execute(f"DELETE FROM password_resets WHERE user_id = {p}", (user_id,))
+    c.execute(f"DELETE FROM rt_password_resets WHERE user_id = {p}", (user_id,))
     c.execute(
-        f"INSERT INTO password_resets (user_id,token,expires_at) VALUES ({p},{p},{p})",
+        f"INSERT INTO rt_password_resets (user_id,token,expires_at) VALUES ({p},{p},{p})",
         (user_id, token, expires_at)
     )
     conn.commit()
@@ -233,7 +234,7 @@ def get_reset_token(token):
     conn = _get_conn()
     c = _cursor(conn)
     p = _p()
-    c.execute(f"SELECT * FROM password_resets WHERE token = {p}", (token,))
+    c.execute(f"SELECT * FROM rt_password_resets WHERE token = {p}", (token,))
     row = c.fetchone()
     conn.close()
     return dict(row) if row else None
@@ -243,7 +244,7 @@ def delete_reset_token(token):
     conn = _get_conn()
     c = _cursor(conn)
     p = _p()
-    c.execute(f"DELETE FROM password_resets WHERE token = {p}", (token,))
+    c.execute(f"DELETE FROM rt_password_resets WHERE token = {p}", (token,))
     conn.commit()
     conn.close()
 
@@ -273,7 +274,7 @@ def get_all_recipes(user_id, category=None, search=None):
     conn = _get_conn()
     c = _cursor(conn)
     p = _p()
-    c.execute(f"SELECT * FROM recipes WHERE user_id = {p} ORDER BY created_at DESC", (user_id,))
+    c.execute(f"SELECT * FROM rt_recipes WHERE user_id = {p} ORDER BY created_at DESC", (user_id,))
     rows = c.fetchall()
     conn.close()
     recipes = [_decrypt_recipe(row) for row in rows]
@@ -294,7 +295,7 @@ def get_recipe(recipe_id, user_id):
     conn = _get_conn()
     c = _cursor(conn)
     p = _p()
-    c.execute(f"SELECT * FROM recipes WHERE id = {p} AND user_id = {p}", (recipe_id, user_id))
+    c.execute(f"SELECT * FROM rt_recipes WHERE id = {p} AND user_id = {p}", (recipe_id, user_id))
     row = c.fetchone()
     conn.close()
     return _decrypt_recipe(row) if row else None
@@ -305,7 +306,7 @@ def add_recipe(user_id, title, category, description, prep_time, cook_time, serv
     c = _cursor(conn)
     p = _p()
     c.execute(
-        f"INSERT INTO recipes (user_id,title,category,description,prep_time,cook_time,servings,calories_per_serving,ingredients,instructions,notes,created_at) VALUES ({p},{p},{p},{p},{p},{p},{p},{p},{p},{p},{p},{p})",
+        f"INSERT INTO rt_recipes (user_id,title,category,description,prep_time,cook_time,servings,calories_per_serving,ingredients,instructions,notes,created_at) VALUES ({p},{p},{p},{p},{p},{p},{p},{p},{p},{p},{p},{p})",
         (user_id, encrypt(title), category, encrypt(description),
          prep_time, cook_time, servings, calories_per_serving,
          encrypt(json.dumps(ingredients)), encrypt(json.dumps(instructions)),
@@ -322,7 +323,7 @@ def update_recipe(recipe_id, user_id, title, category, description, prep_time, c
     c = _cursor(conn)
     p = _p()
     c.execute(
-        f"UPDATE recipes SET title={p},category={p},description={p},prep_time={p},cook_time={p},servings={p},calories_per_serving={p},ingredients={p},instructions={p},notes={p} WHERE id={p} AND user_id={p}",
+        f"UPDATE rt_recipes SET title={p},category={p},description={p},prep_time={p},cook_time={p},servings={p},calories_per_serving={p},ingredients={p},instructions={p},notes={p} WHERE id={p} AND user_id={p}",
         (encrypt(title), category, encrypt(description),
          prep_time, cook_time, servings, calories_per_serving,
          encrypt(json.dumps(ingredients)), encrypt(json.dumps(instructions)),
@@ -336,8 +337,8 @@ def delete_recipe(recipe_id, user_id):
     conn = _get_conn()
     c = _cursor(conn)
     p = _p()
-    c.execute(f"DELETE FROM meal_plans WHERE recipe_id = {p} AND user_id = {p}", (recipe_id, user_id))
-    c.execute(f"DELETE FROM recipes WHERE id = {p} AND user_id = {p}", (recipe_id, user_id))
+    c.execute(f"DELETE FROM rt_meal_plans WHERE recipe_id = {p} AND user_id = {p}", (recipe_id, user_id))
+    c.execute(f"DELETE FROM rt_recipes WHERE id = {p} AND user_id = {p}", (recipe_id, user_id))
     conn.commit()
     conn.close()
 
@@ -350,8 +351,8 @@ def get_meal_plan_week(user_id, week_start, week_end):
     p = _p()
     c.execute(
         f"""SELECT mp.*, r.title AS recipe_title_enc, r.calories_per_serving
-            FROM meal_plans mp
-            JOIN recipes r ON mp.recipe_id = r.id
+            FROM rt_meal_plans mp
+            JOIN rt_recipes r ON mp.recipe_id = r.id
             WHERE mp.user_id = {p} AND mp.plan_date >= {p} AND mp.plan_date <= {p}
             ORDER BY mp.plan_date, mp.meal_type""",
         (user_id, week_start, week_end)
@@ -371,7 +372,7 @@ def add_to_meal_plan(user_id, plan_date, meal_type, recipe_id):
     c = _cursor(conn)
     p = _p()
     c.execute(
-        f"INSERT INTO meal_plans (user_id,plan_date,meal_type,recipe_id) VALUES ({p},{p},{p},{p})",
+        f"INSERT INTO rt_meal_plans (user_id,plan_date,meal_type,recipe_id) VALUES ({p},{p},{p},{p})",
         (user_id, plan_date, meal_type, recipe_id)
     )
     conn.commit()
@@ -382,7 +383,7 @@ def remove_from_meal_plan(plan_id, user_id):
     conn = _get_conn()
     c = _cursor(conn)
     p = _p()
-    c.execute(f"DELETE FROM meal_plans WHERE id = {p} AND user_id = {p}", (plan_id, user_id))
+    c.execute(f"DELETE FROM rt_meal_plans WHERE id = {p} AND user_id = {p}", (plan_id, user_id))
     conn.commit()
     conn.close()
 
@@ -394,8 +395,8 @@ def get_meal_plan_recipes(user_id, date_from, date_to):
     p = _p()
     c.execute(
         f"""SELECT DISTINCT r.ingredients
-            FROM meal_plans mp
-            JOIN recipes r ON mp.recipe_id = r.id
+            FROM rt_meal_plans mp
+            JOIN rt_recipes r ON mp.recipe_id = r.id
             WHERE mp.user_id = {p} AND mp.plan_date >= {p} AND mp.plan_date <= {p}""",
         (user_id, date_from, date_to)
     )
@@ -415,7 +416,7 @@ def get_shopping_list(user_id):
     conn = _get_conn()
     c = _cursor(conn)
     p = _p()
-    c.execute(f"SELECT * FROM shopping_items WHERE user_id = {p} ORDER BY checked, created_at DESC", (user_id,))
+    c.execute(f"SELECT * FROM rt_shopping_items WHERE user_id = {p} ORDER BY checked, created_at DESC", (user_id,))
     rows = c.fetchall()
     conn.close()
     return [dict(row) for row in rows]
@@ -426,7 +427,7 @@ def add_shopping_item(user_id, ingredient, amount, unit):
     c = _cursor(conn)
     p = _p()
     c.execute(
-        f"INSERT INTO shopping_items (user_id,ingredient,amount,unit,checked,created_at) VALUES ({p},{p},{p},{p},0,{p})",
+        f"INSERT INTO rt_shopping_items (user_id,ingredient,amount,unit,checked,created_at) VALUES ({p},{p},{p},{p},0,{p})",
         (user_id, ingredient, amount, unit, datetime.utcnow().isoformat())
     )
     conn.commit()
@@ -437,7 +438,7 @@ def toggle_shopping_item(item_id, user_id):
     conn = _get_conn()
     c = _cursor(conn)
     p = _p()
-    c.execute(f"UPDATE shopping_items SET checked = 1 - checked WHERE id = {p} AND user_id = {p}", (item_id, user_id))
+    c.execute(f"UPDATE rt_shopping_items SET checked = 1 - checked WHERE id = {p} AND user_id = {p}", (item_id, user_id))
     conn.commit()
     conn.close()
 
@@ -447,8 +448,8 @@ def clear_shopping_list(user_id, checked_only=False):
     c = _cursor(conn)
     p = _p()
     if checked_only:
-        c.execute(f"DELETE FROM shopping_items WHERE user_id = {p} AND checked = 1", (user_id,))
+        c.execute(f"DELETE FROM rt_shopping_items WHERE user_id = {p} AND checked = 1", (user_id,))
     else:
-        c.execute(f"DELETE FROM shopping_items WHERE user_id = {p}", (user_id,))
+        c.execute(f"DELETE FROM rt_shopping_items WHERE user_id = {p}", (user_id,))
     conn.commit()
     conn.close()
