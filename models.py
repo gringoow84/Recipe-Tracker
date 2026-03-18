@@ -77,6 +77,7 @@ def init_db():
                 ingredients TEXT NOT NULL,
                 instructions TEXT NOT NULL,
                 notes TEXT,
+                photo TEXT DEFAULT '',
                 created_at TEXT NOT NULL
             )
         """)
@@ -132,6 +133,7 @@ def init_db():
                 ingredients TEXT NOT NULL,
                 instructions TEXT NOT NULL,
                 notes TEXT,
+                photo TEXT DEFAULT '',
                 created_at TEXT NOT NULL
             )
         """)
@@ -157,6 +159,24 @@ def init_db():
         """)
 
     conn.commit()
+    conn.close()
+
+
+def migrate_db():
+    """Add new columns to existing tables without losing data."""
+    conn = _get_conn()
+    c = _cursor(conn)
+    try:
+        if DATABASE_URL:
+            c.execute("ALTER TABLE rt_recipes ADD COLUMN IF NOT EXISTS photo TEXT DEFAULT ''")
+        else:
+            c.execute("PRAGMA table_info(rt_recipes)")
+            cols = [row[1] for row in c.fetchall()]
+            if "photo" not in cols:
+                c.execute("ALTER TABLE rt_recipes ADD COLUMN photo TEXT DEFAULT ''")
+        conn.commit()
+    except Exception:
+        conn.rollback()
     conn.close()
 
 
@@ -266,6 +286,7 @@ def _decrypt_recipe(row):
         "ingredients":          json.loads(decrypt(row["ingredients"])) if row["ingredients"] else [],
         "instructions":         json.loads(decrypt(row["instructions"])) if row["instructions"] else [],
         "notes":                decrypt(row["notes"]) if row["notes"] else "",
+        "photo":                row.get("photo") or "",
         "created_at":           row["created_at"],
     }
 
@@ -301,16 +322,16 @@ def get_recipe(recipe_id, user_id):
     return _decrypt_recipe(row) if row else None
 
 
-def add_recipe(user_id, title, category, description, prep_time, cook_time, servings, calories_per_serving, ingredients, instructions, notes):
+def add_recipe(user_id, title, category, description, prep_time, cook_time, servings, calories_per_serving, ingredients, instructions, notes, photo=""):
     conn = _get_conn()
     c = _cursor(conn)
     p = _p()
     c.execute(
-        f"INSERT INTO rt_recipes (user_id,title,category,description,prep_time,cook_time,servings,calories_per_serving,ingredients,instructions,notes,created_at) VALUES ({p},{p},{p},{p},{p},{p},{p},{p},{p},{p},{p},{p})",
+        f"INSERT INTO rt_recipes (user_id,title,category,description,prep_time,cook_time,servings,calories_per_serving,ingredients,instructions,notes,photo,created_at) VALUES ({p},{p},{p},{p},{p},{p},{p},{p},{p},{p},{p},{p},{p})",
         (user_id, encrypt(title), category, encrypt(description),
          prep_time, cook_time, servings, calories_per_serving,
          encrypt(json.dumps(ingredients)), encrypt(json.dumps(instructions)),
-         encrypt(notes), datetime.utcnow().isoformat())
+         encrypt(notes), photo, datetime.utcnow().isoformat())
     )
     recipe_id = _lastrowid(conn, c)
     conn.commit()
@@ -318,17 +339,26 @@ def add_recipe(user_id, title, category, description, prep_time, cook_time, serv
     return recipe_id
 
 
-def update_recipe(recipe_id, user_id, title, category, description, prep_time, cook_time, servings, calories_per_serving, ingredients, instructions, notes):
+def update_recipe(recipe_id, user_id, title, category, description, prep_time, cook_time, servings, calories_per_serving, ingredients, instructions, notes, photo=None):
     conn = _get_conn()
     c = _cursor(conn)
     p = _p()
-    c.execute(
-        f"UPDATE rt_recipes SET title={p},category={p},description={p},prep_time={p},cook_time={p},servings={p},calories_per_serving={p},ingredients={p},instructions={p},notes={p} WHERE id={p} AND user_id={p}",
-        (encrypt(title), category, encrypt(description),
-         prep_time, cook_time, servings, calories_per_serving,
-         encrypt(json.dumps(ingredients)), encrypt(json.dumps(instructions)),
-         encrypt(notes), recipe_id, user_id)
-    )
+    if photo is not None:
+        c.execute(
+            f"UPDATE rt_recipes SET title={p},category={p},description={p},prep_time={p},cook_time={p},servings={p},calories_per_serving={p},ingredients={p},instructions={p},notes={p},photo={p} WHERE id={p} AND user_id={p}",
+            (encrypt(title), category, encrypt(description),
+             prep_time, cook_time, servings, calories_per_serving,
+             encrypt(json.dumps(ingredients)), encrypt(json.dumps(instructions)),
+             encrypt(notes), photo, recipe_id, user_id)
+        )
+    else:
+        c.execute(
+            f"UPDATE rt_recipes SET title={p},category={p},description={p},prep_time={p},cook_time={p},servings={p},calories_per_serving={p},ingredients={p},instructions={p},notes={p} WHERE id={p} AND user_id={p}",
+            (encrypt(title), category, encrypt(description),
+             prep_time, cook_time, servings, calories_per_serving,
+             encrypt(json.dumps(ingredients)), encrypt(json.dumps(instructions)),
+             encrypt(notes), recipe_id, user_id)
+        )
     conn.commit()
     conn.close()
 

@@ -68,6 +68,13 @@
             </div>
         </div>
 
+        {% if recipe.photo %}
+        <div class="card card-shadow border-0 mb-3">
+            <img src="{{ recipe.photo }}" alt="{{ recipe.title }}"
+                 class="img-fluid rounded" style="max-height:350px; width:100%; object-fit:cover;">
+        </div>
+        {% endif %}
+
         <!-- Ingredients with serving adjuster -->
         <div class="card card-shadow border-0 mb-3">
             <div class="card-header bg-success text-white d-flex justify-content-between align-items-center">

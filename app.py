@@ -42,6 +42,7 @@ app = Flask(__name__)
 app.secret_key = _load_flask_secret()
 
 models.init_db()
+models.migrate_db()
 
 # ---------------------------------------------------------------------------
 # Decorators
@@ -289,6 +290,9 @@ def add_recipe():
             # Parse instructions
             instructions = [s.strip() for s in request.form.getlist("step[]") if s.strip()]
 
+            # Photo (base64 string sent from client-side canvas compression)
+            photo = request.form.get("photo_data", "").strip()
+
             if not title:
                 raise ValueError("Title is required.")
             if not ingredients:
@@ -299,7 +303,7 @@ def add_recipe():
             recipe_id = models.add_recipe(
                 user_id, title, category, description,
                 prep_time, cook_time, servings, calories,
-                ingredients, instructions, notes
+                ingredients, instructions, notes, photo
             )
             flash(f"Recipe '{title}' added successfully!", "success")
             return redirect(url_for("recipe_detail", recipe_id=recipe_id))
@@ -340,13 +344,17 @@ def edit_recipe(recipe_id):
 
             instructions = [s.strip() for s in request.form.getlist("step[]") if s.strip()]
 
+            # Photo — only update if a new one was uploaded, otherwise keep existing
+            photo_data = request.form.get("photo_data", "").strip()
+            photo = photo_data if photo_data else None
+
             if not title:
                 raise ValueError("Title is required.")
 
             models.update_recipe(
                 recipe_id, user_id, title, category, description,
                 prep_time, cook_time, servings, calories,
-                ingredients, instructions, notes
+                ingredients, instructions, notes, photo
             )
             flash(f"Recipe '{title}' updated!", "success")
             return redirect(url_for("recipe_detail", recipe_id=recipe_id))

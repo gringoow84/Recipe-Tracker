@@ -210,6 +210,24 @@
                 </div>
             </div>
 
+            <div class="card card-shadow border-0 mb-3">
+                <div class="card-header bg-success text-white"><i class="bi bi-image me-2"></i>Dish Photo</div>
+                <div class="card-body">
+                    {% if recipe and recipe.photo %}
+                    <img id="photo-preview" src="{{ recipe.photo }}" alt="Current photo"
+                         class="img-fluid rounded mb-2" style="max-height:200px; width:100%; object-fit:cover;">
+                    {% else %}
+                    <img id="photo-preview" src="" alt="" class="img-fluid rounded mb-2 d-none"
+                         style="max-height:200px; width:100%; object-fit:cover;">
+                    {% endif %}
+                    <input type="file" class="form-control form-control-sm" id="photo-file"
+                           accept="image/*" onchange="handlePhoto(this)">
+                    <small class="text-muted">Photo will be compressed automatically. Max display size: 800px.</small>
+                    <input type="hidden" name="photo_data" id="photo-data"
+                           value="{{ recipe.photo if recipe and recipe.photo else '' }}">
+                </div>
+            </div>
+
             <button type="submit" class="btn btn-success w-100 py-2">
                 <i class="bi bi-save me-2"></i>{{ 'Save Changes' if mode == 'edit' else 'Save Recipe' }}
             </button>
@@ -350,6 +368,30 @@ function showImportError(msg) {
 function quickSearch(name) {
     document.getElementById('search-query').value = name;
     searchRecipe();
+}
+
+function handlePhoto(input) {
+    if (!input.files || !input.files[0]) return;
+    const file = input.files[0];
+    const reader = new FileReader();
+    reader.onload = function(e) {
+        const img = new Image();
+        img.onload = function() {
+            const MAX = 800;
+            let w = img.width, h = img.height;
+            if (w > MAX) { h = Math.round(h * MAX / w); w = MAX; }
+            const canvas = document.createElement('canvas');
+            canvas.width = w; canvas.height = h;
+            canvas.getContext('2d').drawImage(img, 0, 0, w, h);
+            const dataUrl = canvas.toDataURL('image/jpeg', 0.75);
+            document.getElementById('photo-data').value = dataUrl;
+            const preview = document.getElementById('photo-preview');
+            preview.src = dataUrl;
+            preview.classList.remove('d-none');
+        };
+        img.src = e.target.result;
+    };
+    reader.readAsDataURL(file);
 }
 
 async function searchRecipe() {

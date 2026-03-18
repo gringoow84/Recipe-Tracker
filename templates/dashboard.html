@@ -40,10 +40,15 @@
     <div class="col-sm-6 col-lg-4">
         <a href="{{ url_for('recipe_detail', recipe_id=recipe.id) }}" class="text-decoration-none">
             <div class="card card-shadow border-0 recipe-card h-100">
+                {% if recipe.photo %}
+                <img src="{{ recipe.photo }}" alt="{{ recipe.title }}"
+                     class="card-img-top" style="height:140px; object-fit:cover;">
+                {% else %}
                 <div class="card-img-top d-flex align-items-center justify-content-center"
                      style="height:140px; background: #f0faf0;">
                     <i class="bi {{ category_icons.get(recipe.category, 'bi-grid') }} text-success" style="font-size: 3rem;"></i>
                 </div>
+                {% endif %}
                 <div class="card-body pb-2">
                     <span class="badge bg-{{ category_colors.get(recipe.category, 'secondary') }} mb-1">{{ recipe.category }}</span>
                     <h6 class="card-title fw-bold text-dark mb-1">{{ recipe.title }}</h6>
