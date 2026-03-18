@@ -19,18 +19,41 @@
     <div class="card-body">
         <ul class="nav nav-tabs mb-3" id="importTabs">
             <li class="nav-item">
-                <button class="nav-link active" data-bs-toggle="tab" data-bs-target="#tab-text">
+                <button class="nav-link active" data-bs-toggle="tab" data-bs-target="#tab-search">
+                    <i class="bi bi-search me-1"></i>Search Recipe
+                </button>
+            </li>
+            <li class="nav-item">
+                <button class="nav-link" data-bs-toggle="tab" data-bs-target="#tab-text">
                     <i class="bi bi-text-paragraph me-1"></i>Paste Text / URL
                 </button>
             </li>
             <li class="nav-item">
                 <button class="nav-link" data-bs-toggle="tab" data-bs-target="#tab-image">
-                    <i class="bi bi-camera me-1"></i>Upload Photo / Screenshot
+                    <i class="bi bi-camera me-1"></i>Upload Photo
                 </button>
             </li>
         </ul>
         <div class="tab-content">
-            <div class="tab-pane fade show active" id="tab-text">
+            <div class="tab-pane fade show active" id="tab-search">
+                <p class="small text-muted mb-2">Type any recipe name and AI will generate the full recipe for you — no URL needed.</p>
+                <div class="d-flex gap-2 mb-2">
+                    <input type="text" class="form-control" id="search-query"
+                           placeholder="e.g. chicken tikka masala, banana bread, pad thai..."
+                           onkeydown="if(event.key==='Enter'){searchRecipe();event.preventDefault();}">
+                    <button class="btn btn-success px-4" onclick="searchRecipe()" id="btn-search">
+                        <i class="bi bi-search me-1"></i>Find
+                    </button>
+                </div>
+                <div class="d-flex flex-wrap gap-2">
+                    <button class="btn btn-outline-secondary btn-sm" onclick="quickSearch('Spaghetti Carbonara')">Spaghetti Carbonara</button>
+                    <button class="btn btn-outline-secondary btn-sm" onclick="quickSearch('Chicken Tikka Masala')">Chicken Tikka Masala</button>
+                    <button class="btn btn-outline-secondary btn-sm" onclick="quickSearch('Banana Bread')">Banana Bread</button>
+                    <button class="btn btn-outline-secondary btn-sm" onclick="quickSearch('Beef Tacos')">Beef Tacos</button>
+                    <button class="btn btn-outline-secondary btn-sm" onclick="quickSearch('Pad Thai')">Pad Thai</button>
+                </div>
+            </div>
+            <div class="tab-pane fade" id="tab-text">
                 <textarea class="form-control mb-2" id="import-text" rows="4"
                           placeholder="Paste recipe text here, or paste a URL to a recipe webpage..."></textarea>
                 <button class="btn btn-success" onclick="importFromText()" id="btn-import-text">
@@ -322,6 +345,21 @@ function showImportError(msg) {
     const err = document.getElementById('import-error');
     err.textContent = msg;
     err.classList.remove('d-none');
+}
+
+function quickSearch(name) {
+    document.getElementById('search-query').value = name;
+    searchRecipe();
+}
+
+async function searchRecipe() {
+    const query = document.getElementById('search-query').value.trim();
+    if (!query) { alert('Please enter a recipe name to search.'); return; }
+    showImportStatus(true);
+    const formData = new FormData();
+    formData.append('import_type', 'search');
+    formData.append('text', query);
+    await doImport(formData);
 }
 </script>
 {% endblock %}

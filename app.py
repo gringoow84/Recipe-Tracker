@@ -414,6 +414,20 @@ def ai_import():
                 }],
                 max_tokens=2000,
             )
+        elif import_type == "search":
+            query = request.form.get("text", "").strip()
+            if not query:
+                return jsonify({"error": "No recipe name provided."}), 400
+
+            response = client.chat.completions.create(
+                model="llama-3.3-70b-versatile",
+                messages=[{
+                    "role": "user",
+                    "content": prompt_prefix + f"Generate a complete, authentic recipe for: {query}"
+                }],
+                max_tokens=2000,
+            )
+
         else:
             text = request.form.get("text", "").strip()
             if not text:
