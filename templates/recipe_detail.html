@@ -150,8 +150,7 @@
             <div class="card-header bg-info text-white"><i class="bi bi-cart-plus me-2"></i>Add to Shopping List</div>
             <div class="card-body">
                 <p class="small text-muted">Add all ingredients from this recipe to your shopping list.</p>
-                <form method="POST" action="{{ url_for('add_to_shopping_from_recipe') }}">
-                    <input type="hidden" name="recipe_id" value="{{ recipe.id }}">
+                <form method="POST" action="{{ url_for('add_to_shopping_from_recipe', recipe_id=recipe.id) }}">
                     <button class="btn btn-info w-100 btn-sm text-white">
                         <i class="bi bi-cart-plus me-1"></i>Add Ingredients
                     </button>
